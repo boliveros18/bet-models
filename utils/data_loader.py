@@ -23,43 +23,46 @@ class DataLoader:
     
     def load_data(self, file_path: str = None):
         if file_path is None:
-            base_dir = Path(__file__).resolve().parent.parent.parent  
-            posibles = ["bet_leagues.json"]
-            
-            for nombre in posibles:
-                test_path = base_dir / "data" / nombre
-                if test_path.exists():
-                    file_path = test_path
+            # Directorio donde está este archivo (utils/)
+            script_dir = Path(__file__).resolve().parent
+            # Directorio padre de utils/ → app/ (donde están app.py y bet_leagues.json)
+            app_dir = script_dir.parent
+
+            # Posibles ubicaciones (ordenadas por prioridad)
+            candidates = [
+                app_dir / "bet_leagues.json",               # app/bet_leagues.json
+                app_dir / "data" / "bet_leagues.json",      # app/data/bet_leagues.json
+                Path("data") / "bet_leagues.json",          # ./data/bet_leagues.json (ruta relativa)
+                Path("bet_leagues.json"),                   # ./bet_leagues.json (actual)
+                app_dir.parent / "data" / "bet_leagues.json" # proyecto/data/bet_leagues.json
+            ]
+
+            for candidate in candidates:
+                if candidate.exists():
+                    file_path = candidate
                     logger.info(f"✅ Archivo encontrado: {file_path}")
                     break
-            
+
             if file_path is None:
-                for nombre in posibles:
-                    test_path = Path("data") / nombre
-                    if test_path.exists():
-                        file_path = test_path
-                        logger.info(f"✅ Archivo encontrado en app/data/: {file_path}")
-                        break
-            
-            if file_path is None:
-                logger.error("❌ No se encontró bet_leagues.json ni bet_legues.json")
+                logger.error("❌ No se encontró bet_leagues.json en ninguna ubicación")
                 self._data = {"tournaments": {}}
                 return
-        
+
+        # Carga del archivo (sin cambios)
         try:
             if isinstance(file_path, str):
                 file_path = Path(file_path)
-            
+
             if not file_path.exists():
                 logger.error(f"Archivo no encontrado: {file_path}")
                 self._data = {"tournaments": {}}
                 return
-            
+
             with open(file_path, 'r', encoding='utf-8') as f:
                 self._data = json.load(f)
             logger.info(f"✅ Datos cargados exitosamente desde {file_path}")
             logger.info(f"   Torneos encontrados: {len(self._data.get('tournaments', {}))}")
-            
+
         except Exception as e:
             logger.error(f"Error al cargar datos: {e}")
             self._data = {"tournaments": {}}
