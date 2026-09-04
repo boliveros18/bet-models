@@ -1,6 +1,6 @@
-Flask
-Flask-Caching
-python-dateutil
-pandas
-plotly
+Flask==2.3.3
+Flask-Caching==2.0.2
+python-dateutil==2.8.2
+pandas==2.0.3
+plotly==5.15.0
 gunicorn
