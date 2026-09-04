@@ -1,0 +1,52 @@
+<!-- templates/tournaments.html -->
+{% extends "base.html" %}
+
+{% block title %}Torneos - Bet Models{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">| TORNEOS</h1>
+    </div>
+</div>
+
+<div class="row g-4">
+    {% for id, t_data in tournaments.items() %}
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">{{ t_data.name }}</h5>
+            </div>
+            <div class="card-body">
+                <p><i class="bi bi-globe"></i> <strong>País:</strong> {{ t_data.country|title }}</p>
+                <p><i class="bi bi-hash"></i> <strong>ID:</strong> <span class="num">{{ id }}</span></p>
+                <p><i class="bi bi-calendar"></i> <strong>Model runs:</strong> {{ t_data.prediction_runs|length }}</p>
+
+                {% if id in stats %}
+                <hr>
+                <p><i class="bi bi-list-ul"></i> <strong>Total Eventos:</strong> {{ stats[id].total_events }}</p>
+                <p><i class="bi bi-check-circle"></i> <strong>Ganados:</strong> {{ stats[id].total_winned }}</p>
+                <p><i class="bi bi-x-circle"></i> <strong>Perdidos:</strong> {{ stats[id].total_lost }}</p>
+                <p><i class="bi bi-clock"></i> <strong>Pendientes:</strong> {{ stats[id].total_pending }}</p>
+                <p><i class="bi bi-percent"></i> <strong>Tasa Éxito:</strong>
+                    <span class="{% if stats[id].win_rate >= 0.5 %}text-success{% else %}text-danger{% endif %}">
+                        {{ "%.0f"|format(stats[id].win_rate * 100) }}%
+                    </span>
+                </p>
+                <p><i class="bi bi-graph-up"></i> <strong>Edge Promedio:</strong>
+                    <span class="{% if stats[id].avg_edge > 0 %}text-success{% else %}text-danger{% endif %}">
+                        {{ "%.2f"|format(stats[id].avg_edge * 100) }}%
+                    </span>
+                </p>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('events', tournament=id) }}" class="btn btn-primary btn-sm w-100">
+                    Eventos
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

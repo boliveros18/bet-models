@@ -1,0 +1,322 @@
+<!-- templates/stats.html -->
+{% extends "base.html" %}
+
+{% block title %}Estadísticas - Bet Models{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">| ESTADISTICAS</h1>
+    </div>
+</div>
+
+<!-- Tarjetas de estadísticas generales -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card stat-card--events">
+            <i class="bi bi-list-ul stat-card__icon"></i>
+            <span class="stat-card__label">Total Eventos</span>
+            <span class="stat-card__value">{{ total_events }}</span>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card stat-card--won">
+            <i class="bi bi-check-circle stat-card__icon"></i>
+            <span class="stat-card__label">Ganados</span>
+            <span class="stat-card__value">{{ total_winned }}</span>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card stat-card--rate">
+            <i class="bi bi-percent stat-card__icon"></i>
+            <span class="stat-card__label">Tasa de Éxito</span>
+            <span class="stat-card__value">{{ "%.1f"|format(win_rate * 100) }}%</span>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card stat-card--info">
+            <i class="bi bi-graph-up stat-card__icon"></i>
+            <span class="stat-card__label">Edge Promedio</span>
+            <span class="stat-card__value">{{ "%.3f"|format(avg_edge) }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos y tablas -->
+<div class="row g-4">
+    <!-- Gráfico por tipo de apuesta -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">RENDIMIENTO POR TIPO DE APUESTA</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="betChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de torneos -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">RENDIMIENTO POR TORNEO</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>País</th>
+                                <th>Torneo</th>
+                                <th>Eventos</th>
+                                <th>Ganados</th>
+                                <th>% Éxito</th>
+                                <th>%Edge Prom.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if tournament_stats %}
+                            {% for id, stats in tournament_stats.items() %}
+                            <tr>
+                                <td>{{ stats.country|title }}</td>
+                                <td>{{ stats.name }}</td>
+                                <td class="num">{{ stats.total_events }}</td>
+                                <td class="num">{{ stats.total_winned }}</td>
+                                <td class="num">
+                                    <span
+                                        class="{% if stats.win_rate >= 0.5 %}text-success{% else %}text-danger{% endif %}">
+                                        {{ "%.0f"|format(stats.win_rate * 100) }}%
+                                    </span>
+                                </td>
+                                <td class="num">
+                                    <span
+                                        class="{% if stats.avg_edge > 0 %}text-success{% else %}text-danger{% endif %}">
+                                        {{ "%.2f"|format(stats.avg_edge*100) }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">No hay datos disponibles</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráfico diario -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">RENDIMIENTO DIARIO</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="dailyChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Función para inicializar los gráficos
+    function initCharts() {
+        Chart.defaults.color = '#9db2a4';
+        Chart.defaults.borderColor = 'rgba(38, 57, 46, 0.6)';
+        Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+
+        // 1. Gráfico de apuestas
+        var betChartElement = document.getElementById('betChart');
+        if (betChartElement) {
+            var betCtx = betChartElement.getContext('2d');
+
+            // Datos desde el servidor
+            var betStats = JSON.parse('{{ bet_stats|tojson|safe }}');
+
+            if (betStats && Object.keys(betStats).length > 0) {
+                var labels = Object.keys(betStats);
+                var totalData = labels.map(function (key) {
+                    return betStats[key].total;
+                });
+                var winnedData = labels.map(function (key) {
+                    return betStats[key].winned;
+                });
+
+                new Chart(betCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Total Eventos',
+                                data: totalData,
+                                backgroundColor: 'rgba(111, 155, 214, 0.55)',
+                                borderColor: 'rgba(111, 155, 214, 1)',
+                                borderWidth: 1.5,
+                                borderRadius: 4
+                            },
+                            {
+                                label: 'Eventos Ganados',
+                                data: winnedData,
+                                backgroundColor: 'rgba(79, 191, 130, 0.55)',
+                                borderColor: 'rgba(79, 191, 130, 1)',
+                                borderWidth: 1.5,
+                                borderRadius: 4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                position: 'top'
+                            },
+                            tooltip: {
+                                backgroundColor: '#1b2c23',
+                                borderColor: '#26392e',
+                                borderWidth: 1,
+                                callbacks: {
+                                    label: function (context) {
+                                        var label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += context.parsed.y;
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                },
+                                grid: { color: 'rgba(38, 57, 46, 0.6)' }
+                            },
+                            x: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            } else {
+                betChartElement.parentElement.innerHTML = '<p class="text-center text-muted">No hay datos suficientes para mostrar el gráfico</p>';
+            }
+        }
+
+        // 2. Gráfico diario
+        var dailyChartElement = document.getElementById('dailyChart');
+        if (dailyChartElement) {
+            var dailyCtx = dailyChartElement.getContext('2d');
+
+            // Datos desde el servidor
+            var dailyStats = JSON.parse('{{ daily_stats|tojson|safe }}');
+
+            if (dailyStats && Object.keys(dailyStats).length > 0) {
+                var dates = Object.keys(dailyStats).sort();
+                var totalDaily = dates.map(function (d) {
+                    return dailyStats[d].total;
+                });
+                var winnedDaily = dates.map(function (d) {
+                    return dailyStats[d].winned;
+                });
+
+                new Chart(dailyCtx, {
+                    type: 'line',
+                    data: {
+                        labels: dates,
+                        datasets: [
+                            {
+                                label: 'Total Eventos',
+                                data: totalDaily,
+                                borderColor: 'rgba(111, 155, 214, 1)',
+                                backgroundColor: 'rgba(111, 155, 214, 0.12)',
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 3,
+                                pointBackgroundColor: 'rgba(111, 155, 214, 1)'
+                            },
+                            {
+                                label: 'Eventos Ganados',
+                                data: winnedDaily,
+                                borderColor: 'rgba(227, 163, 58, 1)',
+                                backgroundColor: 'rgba(227, 163, 58, 0.12)',
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 3,
+                                pointBackgroundColor: 'rgba(227, 163, 58, 1)'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                position: 'top'
+                            },
+                            tooltip: {
+                                backgroundColor: '#1b2c23',
+                                borderColor: '#26392e',
+                                borderWidth: 1,
+                                callbacks: {
+                                    label: function (context) {
+                                        var label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += context.parsed.y;
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                },
+                                grid: { color: 'rgba(38, 57, 46, 0.6)' }
+                            },
+                            x: {
+                                ticks: {
+                                    maxRotation: 45,
+                                    autoSkip: true,
+                                    maxTicksLimit: 20
+                                },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            } else {
+                dailyChartElement.parentElement.innerHTML = '<p class="text-center text-muted">No hay datos suficientes para mostrar el gráfico</p>';
+            }
+        }
+    }
+
+    // Inicializar cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', function () {
+        initCharts();
+    });
+</script>
+
+{% endblock %}

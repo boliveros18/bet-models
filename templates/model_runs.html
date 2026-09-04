@@ -1,0 +1,561 @@
+<!-- templates/model_runs.html -->
+{% extends "base.html" %}
+
+{% block title %}Model Runs - Bet Models{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-2">{{ title }}</h1>
+        {% if filter_date %}
+        <p class="text-muted">Mostrando ejecuciones del <strong>{{ filter_date }}</strong></p>
+        <a href="{{ url_for('model_runs') }}" class="btn btn-sm btn-outline-secondary mb-3">
+            <i class="bi bi-arrow-left"></i> Ver últimas ejecuciones
+        </a>
+        {% else %}
+        <p class="text-muted">Mostrando el último entrenamiento disponible para cada liga</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Tarjetas de resumen -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card stat-card--events">
+            <i class="bi bi-collection-play stat-card__icon"></i>
+            <span class="stat-card__label">Total Ejecuciones</span>
+            <span class="stat-card__value">{{ total_runs }}</span>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card stat-card--info">
+            <i class="bi bi-list-ul stat-card__icon"></i>
+            <span class="stat-card__label">Total Eventos</span>
+            <span class="stat-card__value">{{ total_events }}</span>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card stat-card--won">
+            <i class="bi bi-check-circle stat-card__icon"></i>
+            <span class="stat-card__label">Eventos Ganados</span>
+            <span class="stat-card__value">{{ total_winned }}</span>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card stat-card--rate">
+            <i class="bi bi-percent stat-card__icon"></i>
+            <span class="stat-card__label">Tasa de Éxito Global</span>
+            <span class="stat-card__value">{{ "%.2f"|format(overall_win_rate * 100) }}%</span>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-filter"></i> Filtros
+            </div>
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('model_runs') }}" class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">Filtrar por Fecha de Run</label>
+                        <select class="form-select" name="date" onchange="this.form.submit()">
+                            <option value="">Último de cada liga</option>
+                            {% for date in available_dates %}
+                            <option value="{{ date }}" {% if filter_date==date %}selected{% endif %}>
+                                {{ date }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Filtrar por Liga</label>
+                        <select class="form-select" id="filterTournament" onchange="filterTable()">
+                            <option value="all">Todas las ligas</option>
+                            {% for id, t in tournaments.items() %}
+                            <option value="{{ id }}">{{ t.name }} ({{ t.country }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Filtrar por País</label>
+                        <select class="form-select" id="filterCountry" onchange="filterTable()">
+                            <option value="all">Todos los países</option>
+                            {% set countries = [] %}
+                            {% for t in tournaments.values() %}
+                            {% if t.country not in countries %}
+                            {% set _ = countries.append(t.country) %}
+                            <option value="{{ t.country }}">{{ t.country|title }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex gap-2">
+                        <button type="button" class="btn btn-secondary w-50" onclick="resetFilters()">
+                            <i class="bi bi-arrow-counterclockwise"></i> Limpiar
+                        </button>
+                        <button type="button" class="btn btn-outline-success w-25" onclick="expandAll()"
+                            title="Expandir todo">
+                            <i class="bi bi-arrows-expand"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary w-25" onclick="collapseAll()"
+                            title="Colapsar todo">
+                            <i class="bi bi-arrows-collapse"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla de runs -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Total: <strong id="totalRuns">{{ all_runs|length }}</strong> ejecuciones</span>
+                <div>
+                    <span class="badge bg-info me-2">
+                        <i class="bi bi-calendar"></i>
+                        {% if filter_date %}{{ filter_date }}{% else %}Últimos{% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="runsTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;"></th>
+                                <th>Liga</th>
+                                <th>País</th>
+                                <th>Fecha Run</th>
+                                <th>Eventos</th>
+                                <th>Ganados</th>
+                                <th>%Exito</th>
+                                <th>%Edge Prom.</th>
+                                <th>Test Acc.</th>
+                                <th>Test AUC</th>
+                                <th>Eventos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for run in all_runs %}
+                            <tr class="run-row" data-tournament="{{ run.tournament_id }}" data-date="{{ run.run_date }}"
+                                data-country="{{ run.country }}">
+                                <td>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                        onclick="toggleDetails('{{ loop.index }}')">
+                                        <i class="bi bi-chevron-right" id="icon-{{ loop.index }}"></i>
+                                    </button>
+                                </td>
+                                <td><strong>{{ run.tournament_name }}</strong></td>
+                                <td><span class="badge bg-info">{{ run.country|title }}</span></td>
+                                <td>
+                                    <span class="fw-bold num">{{ run.run_date }}</span>
+                                    <br><small class="text-muted num">{{ run.run_time }}</small>
+                                </td>
+                                <td class="num">{{ run.total_events }}</td>
+                                <td class="num">{{ run.winned_events }}</td>
+                                <td class="num">
+                                    <span
+                                        class="{% if run.win_rate >= 0.5 %}text-success{% else %}text-danger{% endif %}">
+                                        {{ "%.2f"|format(run.win_rate * 100) }}%
+                                    </span>
+                                </td>
+                                <td class="num">
+                                    <span class="{% if run.avg_edge > 0 %}text-success{% else %}text-danger{% endif %}">
+                                        {{ "%.2f"|format(run.avg_edge * 100) }}
+                                    </span>
+                                </td>
+                                <td class="num">
+                                    {% if run.test_accuracy %}
+                                    <span
+                                        class="{% if run.test_accuracy >= 0.6 %}text-success{% elif run.test_accuracy >= 0.5 %}text-warning{% else %}text-danger{% endif %}">
+                                        {{ "%.2f"|format(run.test_accuracy * 100) }}%
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td class="num">
+                                    {% if run.test_auc %}
+                                    <span
+                                        class="{% if run.test_auc >= 0.65 %}text-success{% elif run.test_auc >= 0.55 %}text-warning{% else %}text-danger{% endif %}">
+                                        {{ "%.2f"|format(run.test_auc) }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('events', tournament=run.tournament_id) }}"
+                                            class="btn btn-primary" title="Ver eventos de esta liga">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            <!-- Fila de detalles -->
+                            <tr id="details-{{ loop.index }}" class="run-details" style="display: none;">
+                                <td colspan="11">
+                                    <div class="p-3">
+                                        <h6 class="mb-3">| ESTADISTICA DEL MODELO:</h6>
+                                        <p class="text-muted">
+                                            <strong>Run:</strong> <span class="num">{{ run.run_date }} {{ run.run_time
+                                                }}</span> |
+                                            <strong>Entrenamiento:</strong> <span class="num">{{ run.last_trained
+                                                }}</span>
+                                        </p>
+
+                                        <div class="row g-3 mb-3">
+                                            <div class="col-md-4">
+                                                <div class="card bg-light h-100">
+                                                    <div class="card-body">
+                                                        <h6 class="card-title">| INFORMACION GENERAL</h6>
+                                                        <table class="table table-sm table-borderless mb-0">
+                                                            <tr>
+                                                                <th>Entrenamiento:</th>
+                                                                <td class="num"><strong>{{ run.last_trained }}</strong>
+                                                                </td>
+                                                            </tr>
+                                                            <tr>
+                                                                <th>Eventos futuros:</th>
+                                                                <td class="num"><strong>{{ run.n_future }}</strong></td>
+                                                            </tr>
+                                                            <tr>
+                                                                <th>Eventos valorados:</th>
+                                                                <td class="num"><strong>{{ run.n_detected_valued
+                                                                        }}</strong></td>
+                                                            </tr>
+                                                            {% if run.n_historical %}
+                                                            <tr>
+                                                                <th>Históricos:</th>
+                                                                <td class="num">{{ run.n_historical }}</td>
+                                                            </tr>
+                                                            {% endif %}
+                                                            <tr>
+                                                                <th>Total eventos run:</th>
+                                                                <td class="num">{{ run.total_events }}</td>
+                                                            </tr>
+                                                            <tr>
+                                                                <th>Tasa éxito:</th>
+                                                                <td class="num">
+                                                                    <span
+                                                                        class="{% if run.win_rate >= 0.5 %}text-success{% else %}text-danger{% endif %}">
+                                                                        <strong>{{ "%.2f"|format(run.win_rate * 100)
+                                                                            }}%</strong>
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="card bg-light h-100">
+                                                    <div class="card-body">
+                                                        <h6 class="card-title">| CONFIGURACION</h6>
+                                                        <table class="table table-sm table-borderless mb-0">
+                                                            {% if run.model_stats.get('train_orig') %}
+                                                            <tr>
+                                                                <th>Train original:</th>
+                                                                <td class="num">{{ run.model_stats.train_orig }}</td>
+                                                            </tr>
+                                                            {% endif %}
+                                                            {% if run.model_stats.get('n_aug') %}
+                                                            <tr>
+                                                                <th>N aumentado:</th>
+                                                                <td class="num">{{ run.model_stats.n_aug }}</td>
+                                                            </tr>
+                                                            {% endif %}
+                                                            {% if run.model_stats.get('val') %}
+                                                            <tr>
+                                                                <th>Val / Test:</th>
+                                                                <td class="num">{{ run.model_stats.val }} / {{
+                                                                    run.model_stats.test }}</td>
+                                                            </tr>
+                                                            {% endif %}
+                                                            {% if run.features_original %}
+                                                            <tr>
+                                                                <th>Features originales:</th>
+                                                                <td class="num">{{ run.features_original }}</td>
+                                                            </tr>
+                                                            {% endif %}
+                                                            {% if run.model_stats.get('features_after_prune') %}
+                                                            <tr>
+                                                                <th>Features after prune:</th>
+                                                                <td class="num">{{ run.model_stats.features_after_prune
+                                                                    }}</td>
+                                                            </tr>
+                                                            {% endif %}
+                                                            {% if run.features_final %}
+                                                            <tr>
+                                                                <th>Features finales:</th>
+                                                                <td class="num">{{ run.features_final }}</td>
+                                                            </tr>
+                                                            {% endif %}
+                                                            {% if run.model_stats.get('folds_OOF') %}
+                                                            <tr>
+                                                                <th>Folds OOF / Optuna:</th>
+                                                                <td class="num">{{ run.model_stats.folds_OOF }} / {{
+                                                                    run.model_stats.folds_Optuna }}</td>
+                                                            </tr>
+                                                            {% endif %}
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="card bg-light h-100">
+                                                    <div class="card-body">
+                                                        <h6 class="card-title">| RENDIMIENTO EN TEST</h6>
+                                                        <table class="table table-sm table-borderless mb-0">
+                                                            {% if run.model_stats.get('test_accuracy') %}
+                                                            <tr>
+                                                                <th>Accuracy:</th>
+                                                                <td class="num">
+                                                                    <span
+                                                                        class="{% if run.model_stats.test_accuracy >= 0.6 %}text-success{% elif run.model_stats.test_accuracy >= 0.5 %}text-warning{% else %}text-danger{% endif %}">
+                                                                        <strong>{{
+                                                                            "%.2f"|format(run.model_stats.test_accuracy
+                                                                            * 100) }}%</strong>
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                            {% endif %}
+                                                            {% if run.model_stats.get('test_bal_accuracy') %}
+                                                            <tr>
+                                                                <th>Balanced Acc:</th>
+                                                                <td class="num">{{
+                                                                    "%.2f"|format(run.model_stats.test_bal_accuracy *
+                                                                    100) }}%</td>
+                                                            </tr>
+                                                            {% endif %}
+                                                            {% if run.model_stats.get('test_auc') %}
+                                                            <tr>
+                                                                <th>AUC:</th>
+                                                                <td class="num">
+                                                                    <span
+                                                                        class="{% if run.model_stats.test_auc >= 0.65 %}text-success{% elif run.model_stats.test_auc >= 0.55 %}text-warning{% else %}text-danger{% endif %}">
+                                                                        <strong>{{
+                                                                            "%.4f"|format(run.model_stats.test_auc)
+                                                                            }}</strong>
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                            {% endif %}
+                                                            {% if run.model_stats.get('test_logloss') %}
+                                                            <tr>
+                                                                <th>LogLoss:</th>
+                                                                <td class="num">
+                                                                    <span
+                                                                        class="{% if run.model_stats.test_logloss <= 0.65 %}text-success{% else %}text-warning{% endif %}">
+                                                                        {{ "%.4f"|format(run.model_stats.test_logloss)
+                                                                        }}
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                            {% endif %}
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Tabla de modelos -->
+                                        {% if run.model_stats.get('xgb_best_cv_logloss') or
+                                        run.model_stats.get('lgb_best_cv_logloss') %}
+                                        <div class="card bg-light h-100">
+                                            <div class="card-body">
+                                                <h6 class="card-title mb-3">| RENDIMIENTO POR MODELO</h6>
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm table-bordered">
+                                                        <thead class="table">
+                                                            <tr>
+                                                                <th> <span class="pl-4">Modelo</span></th>
+                                                                <th><span class="pl-4">CV LogLoss</span></th>
+                                                                <th><span class="pl-4">OOF Accuracy</span></th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {% if run.model_stats.get('xgb_best_cv_logloss') %}
+                                                            <tr>
+                                                                <td><strong>XGBoost</strong></td>
+                                                                <td class="num">{{
+                                                                    "%.4f"|format(run.model_stats.xgb_best_cv_logloss)
+                                                                    }}</td>
+                                                                <td class="num">{{
+                                                                    "%.2f"|format(run.model_stats.oof_acc_xgb * 100) }}%
+                                                                </td>
+                                                            </tr>
+                                                            {% endif %}
+                                                            {% if run.model_stats.get('lgb_best_cv_logloss') %}
+                                                            <tr>
+                                                                <td><strong>LightGBM</strong></td>
+                                                                <td class="num">{{
+                                                                    "%.4f"|format(run.model_stats.lgb_best_cv_logloss)
+                                                                    }}</td>
+                                                                <td class="num">{{
+                                                                    "%.2f"|format(run.model_stats.oof_acc_lgb * 100) }}%
+                                                                </td>
+                                                            </tr>
+                                                            {% endif %}
+                                                            {% if run.model_stats.get('hgbt_best_cv_logloss') %}
+                                                            <tr>
+                                                                <td><strong>HGBT</strong></td>
+                                                                <td class="num">{{
+                                                                    "%.4f"|format(run.model_stats.hgbt_best_cv_logloss)
+                                                                    }}</td>
+                                                                <td class="num">{{
+                                                                    "%.2f"|format(run.model_stats.oof_acc_hgbt * 100)
+                                                                    }}%</td>
+                                                            </tr>
+                                                            {% endif %}
+                                                            {% if run.model_stats.get('cb_best_cv_logloss') %}
+                                                            <tr>
+                                                                <td><strong>CatBoost</strong></td>
+                                                                <td class="num">{{
+                                                                    "%.4f"|format(run.model_stats.cb_best_cv_logloss) }}
+                                                                </td>
+                                                                <td class="num">{{
+                                                                    "%.2f"|format(run.model_stats.oof_acc_cb * 100) }}%
+                                                                </td>
+                                                            </tr>
+                                                            {% endif %}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="11" class="text-center text-muted py-4">No hay ejecuciones para mostrar.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Toggle detalles de una fila
+    function toggleDetails(index) {
+        var detailsRow = document.getElementById('details-' + index);
+        var icon = document.getElementById('icon-' + index);
+
+        if (detailsRow.style.display === 'none') {
+            detailsRow.style.display = 'table-row';
+            if (icon) icon.className = 'bi bi-chevron-down';
+        } else {
+            detailsRow.style.display = 'none';
+            if (icon) icon.className = 'bi bi-chevron-right';
+        }
+    }
+
+    // Expandir todas las filas
+    function expandAll() {
+        var rows = document.querySelectorAll('.run-row');
+        rows.forEach(function (row, index) {
+            var detailsRow = document.getElementById('details-' + (index + 1));
+            var icon = document.getElementById('icon-' + (index + 1));
+            if (detailsRow) {
+                detailsRow.style.display = 'table-row';
+                if (icon) icon.className = 'bi bi-chevron-down';
+            }
+        });
+    }
+
+    // Colapsar todas las filas
+    function collapseAll() {
+        var rows = document.querySelectorAll('.run-row');
+        rows.forEach(function (row, index) {
+            var detailsRow = document.getElementById('details-' + (index + 1));
+            var icon = document.getElementById('icon-' + (index + 1));
+            if (detailsRow) {
+                detailsRow.style.display = 'none';
+                if (icon) icon.className = 'bi bi-chevron-right';
+            }
+        });
+    }
+
+    // Filtrar tabla
+    function filterTable() {
+        var tournamentFilter = document.getElementById('filterTournament').value;
+        var countryFilter = document.getElementById('filterCountry').value;
+
+        var rows = document.querySelectorAll('.run-row');
+        var visibleCount = 0;
+
+        rows.forEach(function (row) {
+            var show = true;
+            var tournament = row.getAttribute('data-tournament');
+            var country = row.getAttribute('data-country');
+
+            // Filtrar por torneo
+            if (tournamentFilter !== 'all' && tournament !== tournamentFilter) {
+                show = false;
+            }
+
+            // Filtrar por país
+            if (countryFilter !== 'all' && country !== countryFilter) {
+                show = false;
+            }
+
+            if (show) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+                // Ocultar también los detalles
+                var nextRow = row.nextElementSibling;
+                if (nextRow && nextRow.id && nextRow.id.startsWith('details-')) {
+                    nextRow.style.display = 'none';
+                }
+            }
+        });
+
+        document.getElementById('totalRuns').textContent = visibleCount;
+    }
+
+    // Resetear filtros
+    function resetFilters() {
+        document.getElementById('filterTournament').value = 'all';
+        document.getElementById('filterCountry').value = 'all';
+        filterTable();
+    }
+</script>
+
+<style>
+    .run-row:hover {
+        cursor: pointer;
+    }
+
+    .run-details td {
+        padding: 1rem;
+    }
+
+    .table-borderless th {
+        font-weight: 600;
+        color: var(--text-muted);
+        padding: 0.3rem 0.5rem;
+    }
+
+    .table-borderless td {
+        padding: 0.3rem 0.5rem;
+    }
+</style>
+
+{% endblock %}

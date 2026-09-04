@@ -1,0 +1,238 @@
+<!-- templates/events.html -->
+{% extends "base.html" %}
+
+{% block title %}Eventos - Bet Models{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">| EVENTOS</h1>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-filter"></i> Filtros
+            </div>
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('events') }}" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="date" class="form-label">Fecha exacta</label>
+                        <input type="date" class="form-control" id="date" name="date" value="{{ filters.date }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="start_date" class="form-label">Desde</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date"
+                            value="{{ filters.start_date }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="end_date" class="form-label">Hasta</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date"
+                            value="{{ filters.end_date }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="tournament" class="form-label">Torneo</label>
+                        <select class="form-select filter-select" id="tournament" name="tournament">
+                            <option value="">Todos</option>
+                            {% for id, t in tournaments.items() %}
+                            <option value="{{ id }}" {% if filters.tournament==id %}selected{% endif %}>
+                                {{ t.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="country" class="form-label">País</label>
+                        <select class="form-select filter-select" id="country" name="country">
+                            <option value="">Todos</option>
+                            {% for country in countries %}
+                            <option value="{{ country }}" {% if filters.country==country %}selected{% endif %}>
+                                {{ country|title }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="winned" class="form-label">Resultado</label>
+                        <select class="form-select filter-select" id="winned" name="winned">
+                            <option value="">Todos</option>
+                            <option value="true" {% if filters.winned=='true' %}selected{% endif %}>✅ Ganados</option>
+                            <option value="false" {% if filters.winned=='false' %}selected{% endif %}>❌ Perdidos
+                            </option>
+                            <option value="pending" {% if filters.winned=='pending' %}selected{% endif %}>⏳ Pendientes
+                            </option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="bet_type" class="form-label">Tipo de Apuesta</label>
+                        <select class="form-select filter-select" id="bet_type" name="bet_type">
+                            <option value="">Todos</option>
+                            {% for bet in bet_types %}
+                            <option value="{{ bet }}" {% if filters.bet_type==bet %}selected{% endif %}>
+                                {{ bet }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="min_edge" class="form-label">Edge mínimo</label>
+                        <input type="number" class="form-control" id="min_edge" name="min_edge" step="0.01"
+                            value="{{ filters.min_edge }}" placeholder="ej. -0.10">
+                        <div class="form-text">Valor decimal (0.05 = 5%)</div>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="max_edge" class="form-label">Edge máximo</label>
+                        <input type="number" class="form-control" id="max_edge" name="max_edge" step="0.01"
+                            value="{{ filters.max_edge }}" placeholder="ej. 0.20">
+                        <div class="form-text">Valor decimal (0.05 = 5%)</div>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-center gap-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-filter"></i> Filtrar
+                        </button>
+                        <a href="{{ url_for('events') }}" class="btn btn-secondary w-100">
+                            <i class="bi bi-arrow-counterclockwise"></i> Limpiar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resultados -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Total: <strong>{{ total_events }}</strong> eventos</span>
+                <span>Página {{ page }} de {{ total_pages }}</span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>País</th>
+                                <th>Torneo</th>
+                                <th>Apuesta</th>
+                                <th>Cuota</th>
+                                <th>%Prob.</th>
+                                <th>%Edge</th>
+                                <th>Resultado</th>
+                                <th>Web</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for event in events %}
+                            <tr>
+                                <td class="num">{{ event.datetime[:16] if event.datetime else 'N/A' }}</td>
+                                <td>{{ event.country|title }}</td>
+                                <td>{{ event.tournament_name }}</td>
+                                <td><span class="badge bg-primary">{{ event.selected_bet }}</span></td>
+                                <td class="num">{{ "%.2f"|format(event.selected_odds) }}</td>
+                                <td class="num">{{ "%.2f"|format(event.selected_prob*100) }}</td>
+                                <td class="num">
+                                    <span
+                                        class="{% if event.selected_edge > 0 %}text-success{% else %}text-danger{% endif %}">
+                                        {{ "%.2f"|format(event.selected_edge*100) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if event.winned is true %}
+                                    <span class="badge bg-success">Ganada</span>
+                                    {% elif event.winned is false %}
+                                    <span class="badge bg-danger">Perdida</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Pendiente</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if event.URL_m %}
+                                    <a href="{{ event.URL_m }}" target="_blank" class="btn btn-sm btn-outline-primary"
+                                        title="Ver partido">
+                                        <i class="bi bi-box-arrow-up-right"></i>
+                                    </a>
+                                    {% else %}
+                                    <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="9" class="text-center text-muted py-4">
+                                    No se encontraron eventos con estos filtros.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer">
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center mb-0">
+                        {% if page > 1 %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('events', page=page-1, **filters) }}">
+                                Anterior
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        {% set start_page = page - 2 %}
+                        {% if start_page < 1 %} {% set start_page=1 %} {% endif %} {% set end_page=page + 2 %} {% if
+                            end_page> total_pages %}
+                            {% set end_page = total_pages %}
+                            {% endif %}
+
+                            {% if start_page > 1 %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('events', page=1, **filters) }}">
+                                    1
+                                </a>
+                            </li>
+                            {% if start_page > 2 %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                            {% endif %}
+                            {% endif %}
+
+                            {% for p in range(start_page, end_page + 1) %}
+                            {% if p == page %}
+                            <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('events', page=p, **filters) }}">
+                                    {{ p }}
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% endfor %}
+
+                            {% if end_page < total_pages %} {% if end_page < total_pages - 1 %} <li
+                                class="page-item disabled"><span class="page-link">...</span></li>
+                                {% endif %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('events', page=total_pages, **filters) }}">
+                                        {{ total_pages }}
+                                    </a>
+                                </li>
+                                {% endif %}
+
+                                {% if page < total_pages %} <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('events', page=page+1, **filters) }}">
+                                        Siguiente
+                                    </a>
+                                    </li>
+                                    {% endif %}
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

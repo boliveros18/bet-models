@@ -1,0 +1,132 @@
+<!-- templates/index.html -->
+{% extends "base.html" %}
+
+{% block title %}Inicio - Bet Models{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="display-4 mb-4">DASHBOARD</h2>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card stat-card--events">
+            <i class="bi bi-list-ul stat-card__icon"></i>
+            <span class="stat-card__label">Total Eventos</span>
+            <span class="stat-card__value">{{ total_events }}</span>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card stat-card--won">
+            <i class="bi bi-check-circle stat-card__icon"></i>
+            <span class="stat-card__label">Ganados</span>
+            <span class="stat-card__value">{{ total_winned }}</span>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card stat-card--rate">
+            <i class="bi bi-percent stat-card__icon"></i>
+            <span class="stat-card__label">Tasa de Éxito</span>
+            <span class="stat-card__value">{{ "%.2f"|format(total_win_rate * 100) }}%</span>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card stat-card--info">
+            <i class="bi bi-trophy stat-card__icon"></i>
+            <span class="stat-card__label">Torneos</span>
+            <span class="stat-card__value">{{ tournaments|length }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <h2>| PARTIDOS FUTUROS</h2>
+        <p class="text-muted">Próximos encuentros aún sin resultado (ordenados por país)</p>
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>País</th>
+                                <th>Torneo</th>
+                                <th>Equipos</th>
+                                <th>Apuesta</th>
+                                <th>Cuota</th>
+                                <th>%Prob.</th>
+                                <th>%Edge</th>
+                                <th>Web</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for event in pending_events %}
+                            <tr>
+                                <td class="num">{{ event.datetime[:16] if event.datetime else 'N/A' }}</td>
+                                <td>{{ event.country|title }}</td>
+                                <td>{{ event.tournament_name }}</td>
+                                <td>{{ event.teams }}</td>
+                                <td><span class="badge bg-primary">{{ event.selected_bet }}</span></td>
+                                <td class="num">{{ "%.2f"|format(event.selected_odds) }}</td>
+                                <td class="num">{{ "%.2f"|format(event.selected_prob*100) }}</td>
+                                <td class="num">
+                                    <span class="{% if event.selected_edge > 0 %}text-success{% else %}text-danger{% endif %}">
+                                        {{ "%.2f"|format(event.selected_edge*100) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if event.URL_m %}
+                                    <a href="{{ event.URL_m }}" target="_blank" class="btn btn-sm btn-outline-primary"
+                                        title="Ver partido en Flashscore">
+                                        <i class="bi bi-box-arrow-up-right"></i> 
+                                    </a>
+                                    {% else %}
+                                    <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% if not pending_events %}
+                    <p class="text-center text-muted py-3 mb-0">No hay partidos futuros programados en este momento.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4 mb-4">
+    <div class="col-12">
+        <h2>| TORNEOS</h2>
+        <div class="row g-4">
+            {% for id, t_data in tournaments.items() %}
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ t_data.name }}</h5>
+                        <p class="card-text">
+                            <i class="bi bi-globe"></i> {{ t_data.country|title }}
+                            <br>
+                            <i class="bi bi-clock"></i> {{ stats[id].total_events if id in stats else 0 }} eventos
+                            <br>
+                            <i class="bi bi-percent"></i> {{ "%.0f"|format(stats[id].win_rate * 100 if id in stats else
+                            0) }}% éxito
+                        </p>
+                        <a href="{{ url_for('events', tournament=id) }}" class="btn btn-primary btn-sm">
+                            Ver eventos
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
