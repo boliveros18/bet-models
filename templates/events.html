@@ -59,10 +59,10 @@
                         <label for="winned" class="form-label">Resultado</label>
                         <select class="form-select filter-select" id="winned" name="winned">
                             <option value="">Todos</option>
-                            <option value="true" {% if filters.winned=='true' %}selected{% endif %}>✅ Ganados</option>
-                            <option value="false" {% if filters.winned=='false' %}selected{% endif %}>❌ Perdidos
+                            <option value="true" {% if filters.winned=='true' %}selected{% endif %}>Ganados</option>
+                            <option value="false" {% if filters.winned=='false' %}selected{% endif %}>Perdidos
                             </option>
-                            <option value="pending" {% if filters.winned=='pending' %}selected{% endif %}>⏳ Pendientes
+                            <option value="pending" {% if filters.winned=='pending' %}selected{% endif %}>Pendientes
                             </option>
                         </select>
                     </div>
@@ -236,3 +236,4 @@
     </div>
 </div>
 {% endblock %}
+
