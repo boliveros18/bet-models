@@ -883,7 +883,7 @@
                             "1": 2.1,
                             "X": 3.4,
                             "2": 3.45,
-                            "WIN": "0",
+                            "WIN": "1",
                             "model_prob_home": 0.4055421172599638,
                             "model_prob_x2": 0.5944578827400362,
                             "model_prob_12": 0.7006014537871932,
@@ -892,7 +892,8 @@
                             "selected_bet": "X2",
                             "selected_odds": 1.712408465889762,
                             "selected_prob": 0.5944578827400362,
-                            "selected_edge": 0.043625028058818405
+                            "selected_edge": 0.043625028058818405,
+                            "winned": false
                         }
                     },
                     "model_stats": {
@@ -2112,7 +2113,7 @@
                             "1": 1.49,
                             "X": 4.2,
                             "2": 5.5,
-                            "WIN": "0",
+                            "WIN": "X",
                             "model_prob_home": 0.699249829878167,
                             "model_prob_x2": 0.300750170121833,
                             "model_prob_12": 0.8294715220121454,
@@ -2121,7 +2122,8 @@
                             "selected_bet": "12",
                             "selected_odds": 1.1723889898751392,
                             "selected_prob": 0.8294715220121454,
-                            "selected_edge": 0.04769643080771435
+                            "selected_edge": 0.04769643080771435,
+                            "winned": false
                         },
                         "664": {
                             "id": "lvwCe90f",
@@ -2133,7 +2135,7 @@
                             "1": 1.51,
                             "X": 4.1,
                             "2": 5.5,
-                            "WIN": "0",
+                            "WIN": "X",
                             "model_prob_home": 0.712515313988444,
                             "model_prob_x2": 0.28748468601155597,
                             "model_prob_12": 0.8352952031320616,
@@ -2142,7 +2144,8 @@
                             "selected_bet": "12",
                             "selected_odds": 1.1847359509382014,
                             "selected_prob": 0.8352952031320616,
-                            "selected_edge": 0.05947595139098294
+                            "selected_edge": 0.05947595139098294,
+                            "winned": false
                         },
                         "665": {
                             "id": "SlvSiRaJ",
@@ -2154,7 +2157,7 @@
                             "1": 2.24,
                             "X": 3.35,
                             "2": 2.92,
-                            "WIN": "0",
+                            "WIN": "X",
                             "model_prob_home": 0.6333681531850414,
                             "model_prob_x2": 0.36663184681495864,
                             "model_prob_12": 0.8292559514645736,
@@ -2163,7 +2166,8 @@
                             "selected_bet": "12",
                             "selected_odds": 1.2675967385446367,
                             "selected_prob": 0.8292559514645736,
-                            "selected_edge": 0.10377036380697802
+                            "selected_edge": 0.10377036380697802,
+                            "winned": false
                         },
                         "666": {
                             "id": "AZW1kvwS",
@@ -2175,7 +2179,7 @@
                             "1": 2.06,
                             "X": 3.3,
                             "2": 3.3,
-                            "WIN": "0",
+                            "WIN": "1",
                             "model_prob_home": 0.6868031754733527,
                             "model_prob_x2": 0.3131968245266473,
                             "model_prob_12": 0.8434015618979426,
@@ -2184,7 +2188,8 @@
                             "selected_bet": "12",
                             "selected_odds": 1.2682834212352483,
                             "selected_prob": 0.8434015618979426,
-                            "selected_edge": 0.121029594242956
+                            "selected_edge": 0.121029594242956,
+                            "winned": true
                         }
                     },
                     "model_stats": {
@@ -3317,7 +3322,7 @@
                             "1": 1.99,
                             "X": 3.3,
                             "2": 4.3,
-                            "WIN": "0",
+                            "WIN": "1",
                             "model_prob_home": 0.579317714872176,
                             "model_prob_x2": 0.420682285127824,
                             "model_prob_12": 0.761982357203846,
@@ -3326,7 +3331,8 @@
                             "selected_bet": "12",
                             "selected_odds": 1.3604131694585775,
                             "selected_prob": 0.761982357203846,
-                            "selected_edge": 0.05389066040368229
+                            "selected_edge": 0.05389066040368229,
+                            "winned": true
                         },
                         "564": {
                             "id": "pvEaHAaf",
@@ -3338,7 +3344,7 @@
                             "1": 2.85,
                             "X": 3.2,
                             "2": 2.66,
-                            "WIN": "0",
+                            "WIN": "2",
                             "model_prob_home": 0.42848806544928925,
                             "model_prob_x2": 0.5715119345507107,
                             "model_prob_12": 0.7405764485401839,
@@ -3347,7 +3353,8 @@
                             "selected_bet": "12",
                             "selected_odds": 1.3758618796659001,
                             "selected_prob": 0.7405764485401839,
-                            "selected_edge": 0.041254670092557566
+                            "selected_edge": 0.041254670092557566,
+                            "winned": true
                         }
                     },
                     "model_stats": {
@@ -3635,7 +3642,7 @@
                             "1": 1.84,
                             "X": 3.45,
                             "2": 4.2,
-                            "WIN": "0",
+                            "WIN": "1",
                             "model_prob_home": 0.6703791366896369,
                             "model_prob_x2": 0.3296208633103631,
                             "model_prob_12": 0.8190316547318923,
@@ -3644,7 +3651,8 @@
                             "selected_bet": "12",
                             "selected_odds": 1.2794700349711188,
                             "selected_prob": 0.8190316547318923,
-                            "selected_edge": 0.08956305569807588
+                            "selected_edge": 0.08956305569807588,
+                            "winned": true
                         }
                     },
                     "model_stats": {
@@ -5594,7 +5602,7 @@
                             "1": 2.52,
                             "X": 2.94,
                             "2": 3.3,
-                            "WIN": "0",
+                            "WIN": "X",
                             "model_prob_home": 0.4613619488514384,
                             "model_prob_x2": 0.5386380511485616,
                             "model_prob_12": 0.7151432988767759,
@@ -5603,7 +5611,8 @@
                             "selected_bet": "12",
                             "selected_odds": 1.428865775215674,
                             "selected_prob": 0.7151432988767759,
-                            "selected_edge": 0.04219979045259348
+                            "selected_edge": 0.04219979045259348,
+                            "winned": false
                         }
                     },
                     "model_stats": {
@@ -6321,7 +6330,7 @@
                             "1": 1.85,
                             "X": 3.7,
                             "2": 4.0,
-                            "WIN": "0",
+                            "WIN": "2",
                             "model_prob_home": 0.6049003073827308,
                             "model_prob_x2": 0.3950996926172692,
                             "model_prob_12": 0.7947533699413495,
@@ -6330,7 +6339,8 @@
                             "selected_bet": "12",
                             "selected_odds": 1.2649571049455972,
                             "selected_prob": 0.7947533699413495,
-                            "selected_edge": 0.04953044000504381
+                            "selected_edge": 0.04953044000504381,
+                            "winned": true
                         },
                         "547": {
                             "id": "jiw2cGTa",
@@ -6342,7 +6352,7 @@
                             "1": 1.91,
                             "X": 3.55,
                             "2": 3.9,
-                            "WIN": "0",
+                            "WIN": "2",
                             "model_prob_home": 0.5725254823127844,
                             "model_prob_x2": 0.42747451768721556,
                             "model_prob_12": 0.7762213555708621,
@@ -6351,7 +6361,8 @@
                             "selected_bet": "12",
                             "selected_odds": 1.2820996635049846,
                             "selected_prob": 0.7762213555708621,
-                            "selected_edge": 0.041551103206616924
+                            "selected_edge": 0.041551103206616924,
+                            "winned": true
                         }
                     },
                     "model_stats": {
@@ -6960,7 +6971,7 @@
                             "1": 1.95,
                             "X": 3.7,
                             "2": 3.45,
-                            "WIN": "0",
+                            "WIN": "X",
                             "model_prob_home": 0.6000688962157594,
                             "model_prob_x2": 0.39993110378424057,
                             "model_prob_12": 0.8070262136731965,
@@ -6969,7 +6980,8 @@
                             "selected_bet": "12",
                             "selected_odds": 1.2458331781232832,
                             "selected_prob": 0.8070262136731965,
-                            "selected_edge": 0.05892174863528565
+                            "selected_edge": 0.05892174863528565,
+                            "winned": false
                         }
                     },
                     "model_stats": {
