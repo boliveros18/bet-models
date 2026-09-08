@@ -23,46 +23,43 @@ class DataLoader:
     
     def load_data(self, file_path: str = None):
         if file_path is None:
-            # Directorio donde está este archivo (utils/)
-            script_dir = Path(__file__).resolve().parent
-            # Directorio padre de utils/ → app/ (donde están app.py y bet_leagues.json)
-            app_dir = script_dir.parent
-
-            # Posibles ubicaciones (ordenadas por prioridad)
-            candidates = [
-                app_dir / "bet_leagues.json",               # app/bet_leagues.json
-                app_dir / "data" / "bet_leagues.json",      # app/data/bet_leagues.json
-                Path("data") / "bet_leagues.json",          # ./data/bet_leagues.json (ruta relativa)
-                Path("bet_leagues.json"),                   # ./bet_leagues.json (actual)
-                app_dir.parent / "data" / "bet_leagues.json" # proyecto/data/bet_leagues.json
-            ]
-
-            for candidate in candidates:
-                if candidate.exists():
-                    file_path = candidate
+            base_dir = Path(__file__).resolve().parent.parent.parent  
+            posibles = ["bet_leagues.json"]
+            
+            for nombre in posibles:
+                test_path = base_dir / "data" / nombre
+                if test_path.exists():
+                    file_path = test_path
                     logger.info(f"✅ Archivo encontrado: {file_path}")
                     break
-
+            
             if file_path is None:
-                logger.error("❌ No se encontró bet_leagues.json en ninguna ubicación")
+                for nombre in posibles:
+                    test_path = Path("data") / nombre
+                    if test_path.exists():
+                        file_path = test_path
+                        logger.info(f"✅ Archivo encontrado en app/data/: {file_path}")
+                        break
+            
+            if file_path is None:
+                logger.error("❌ No se encontró bet_leagues.json ni bet_legues.json")
                 self._data = {"tournaments": {}}
                 return
-
-        # Carga del archivo (sin cambios)
+        
         try:
             if isinstance(file_path, str):
                 file_path = Path(file_path)
-
+            
             if not file_path.exists():
                 logger.error(f"Archivo no encontrado: {file_path}")
                 self._data = {"tournaments": {}}
                 return
-
+            
             with open(file_path, 'r', encoding='utf-8') as f:
                 self._data = json.load(f)
             logger.info(f"✅ Datos cargados exitosamente desde {file_path}")
             logger.info(f"   Torneos encontrados: {len(self._data.get('tournaments', {}))}")
-
+            
         except Exception as e:
             logger.error(f"Error al cargar datos: {e}")
             self._data = {"tournaments": {}}
@@ -173,16 +170,21 @@ class DataLoader:
             total_pending = 0
             total_edges = []
             runs_info = []
+            tournament_profit = 0.0
             
             for run_timestamp, run_data in tournament_data.get("prediction_runs", {}).items():
                 events = run_data.get("event_bet", {})
                 total_events += len(events)
                 
                 for event in events.values():
+                    odds = float(event.get("selected_odds") or event.get("odds") or event.get("odd") or 1.0)
+                    
                     if event.get('winned') is True:
                         total_winned += 1
+                        tournament_profit += (odds - 1.0)
                     elif event.get('winned') is False:
                         total_lost += 1
+                        tournament_profit -= 1.0
                     else:
                         total_pending += 1
                     
@@ -196,7 +198,8 @@ class DataLoader:
                 })
             
             decided_events = total_winned + total_lost
-            win_rate = total_winned / decided_events if decided_events > 0 else 0
+            win_rate = total_winned / decided_events if decided_events > 0 else 0.0
+            roi = (tournament_profit / decided_events * 100.0) if decided_events > 0 else 0.0
             
             stats[tournament_id] = {
                 "name": tournament_name,
@@ -206,7 +209,9 @@ class DataLoader:
                 "total_lost": total_lost,
                 "total_pending": total_pending,
                 "win_rate": win_rate,
-                "avg_edge": sum(total_edges) / len(total_edges) if total_edges else 0,
+                "profit": round(tournament_profit, 2),
+                "roi": round(roi, 2),
+                "avg_edge": sum(total_edges) / len(total_edges) if total_edges else 0.0,
                 "runs": runs_info
             }
         
@@ -241,6 +246,126 @@ class DataLoader:
         if date_filter:
             return [r for r in all_runs if r['run_date'] == date_filter]
         return all_runs
+
+    def get_analytics_summary(self) -> Dict[str, Any]:
+        """
+        Calcula métricas avanzadas de rendimiento cuantitativo:
+        Profit (Unidades), ROI (Yield %), Curva temporal y Desglose por Cuotas.
+        """
+        events = self.get_all_events()
+        
+        decided_events = [e for e in events if e.get("winned") in (True, False)]
+        
+        total_events = len(events)
+        decided_count = len(decided_events)
+        total_winned = sum(1 for e in decided_events if e.get("winned") is True)
+        total_lost = sum(1 for e in decided_events if e.get("winned") is False)
+        total_pending = total_events - decided_count
+        
+        win_rate = total_winned / decided_count if decided_count > 0 else 0.0
+        
+        # Asumiendo Stake plano de 1 Unidad por apuesta
+        total_staked = float(decided_count)
+        total_profit = 0.0
+        
+        edges = []
+        daily_stats = {}
+        odds_brackets = {
+            "< 1.50": {"total": 0, "winned": 0, "profit": 0.0},
+            "1.50 - 1.80": {"total": 0, "winned": 0, "profit": 0.0},
+            "1.80 - 2.20": {"total": 0, "winned": 0, "profit": 0.0},
+            "> 2.20": {"total": 0, "winned": 0, "profit": 0.0},
+        }
+        bet_type_stats = {}
+
+        # Ordenar eventos cronológicamente
+        sorted_decided = sorted(
+            decided_events, 
+            key=lambda x: x.get("date_str") or "0000-00-00"
+        )
+        
+        cumulative_units = 0.0
+
+        for e in sorted_decided:
+            odds = float(e.get("selected_odds") or e.get("odds") or e.get("odd") or 1.0)
+            edge = float(e.get("selected_edge") or 0.0)
+            edges.append(edge)
+            
+            is_win = e.get("winned") is True
+            profit_unit = (odds - 1.0) if is_win else -1.0
+            total_profit += profit_unit
+            cumulative_units += profit_unit
+            
+            date_str = e.get("date_str") or "Desconocido"
+            if date_str not in daily_stats:
+                daily_stats[date_str] = {
+                    "profit": 0.0,
+                    "cumulative": 0.0,
+                    "events": 0,
+                    "winned": 0
+                }
+            daily_stats[date_str]["profit"] += profit_unit
+            daily_stats[date_str]["events"] += 1
+            if is_win:
+                daily_stats[date_str]["winned"] += 1
+            daily_stats[date_str]["cumulative"] = round(cumulative_units, 2)
+
+            # Agrupación por Rangos de Cuotas
+            if odds < 1.50:
+                b_key = "< 1.50"
+            elif odds <= 1.80:
+                b_key = "1.50 - 1.80"
+            elif odds <= 2.20:
+                b_key = "1.80 - 2.20"
+            else:
+                b_key = "> 2.20"
+                
+            odds_brackets[b_key]["total"] += 1
+            if is_win:
+                odds_brackets[b_key]["winned"] += 1
+            odds_brackets[b_key]["profit"] += profit_unit
+
+            # Agrupación por Tipo de Apuesta / Mercado
+            b_type = e.get("bet_type") or e.get("market") or e.get("selected_market") or "Principal"
+            if b_type not in bet_type_stats:
+                bet_type_stats[b_type] = {"total": 0, "winned": 0, "profit": 0.0}
+            bet_type_stats[b_type]["total"] += 1
+            if is_win:
+                bet_type_stats[b_type]["winned"] += 1
+            bet_type_stats[b_type]["profit"] += profit_unit
+
+        roi = (total_profit / total_staked * 100.0) if total_staked > 0 else 0.0
+        avg_edge = (sum(edges) / len(edges)) if edges else 0.0
+
+        # Formatear torneos con Unidades y ROI
+        tournament_stats = self.get_tournament_stats()
+        for t_id, t_data in tournament_stats.items():
+            t_decided = t_data.get("total_winned", 0) + t_data.get("total_lost", 0)
+            t_profit = 0.0
+            # Calcular profit específico del torneo
+            for e in sorted_decided:
+                if e.get("tournament_id") == t_id:
+                    o = float(e.get("selected_odds") or e.get("odds") or 1.0)
+                    t_profit += (o - 1.0) if e.get("winned") else -1.0
+            
+            t_data["profit"] = round(t_profit, 2)
+            t_data["roi"] = round((t_profit / t_decided * 100.0), 2) if t_decided > 0 else 0.0
+
+        return {
+            "total_events": total_events,
+            "decided_events": decided_count,
+            "total_winned": total_winned,
+            "total_lost": total_lost,
+            "total_pending": total_pending,
+            "win_rate": win_rate,
+            "avg_edge": avg_edge,
+            "total_profit": round(total_profit, 2),
+            "roi": round(roi, 2),
+            "daily_stats": daily_stats,
+            "odds_brackets": odds_brackets,
+            "bet_type_stats": bet_type_stats,
+            "tournament_stats": tournament_stats
+        }
 
 # Instancia global
 data_loader = DataLoader()
