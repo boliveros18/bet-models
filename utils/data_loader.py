@@ -23,26 +23,20 @@ class DataLoader:
     
     def load_data(self, file_path: str = None):
         if file_path is None:
-            base_dir = Path(__file__).resolve().parent.parent.parent  
-            posibles = ["bet_leagues.json"]
-            
-            for nombre in posibles:
-                test_path = base_dir / "data" / nombre
-                if test_path.exists():
-                    file_path = test_path
+            script_dir = Path(__file__).resolve().parent
+            app_dir = script_dir.parent
+            candidates = [
+                app_dir / "bet_leagues.json"
+            ]
+
+            for candidate in candidates:
+                if candidate.exists():
+                    file_path = candidate
                     logger.info(f"✅ Archivo encontrado: {file_path}")
                     break
             
             if file_path is None:
-                for nombre in posibles:
-                    test_path = Path("data") / nombre
-                    if test_path.exists():
-                        file_path = test_path
-                        logger.info(f"✅ Archivo encontrado en app/data/: {file_path}")
-                        break
-            
-            if file_path is None:
-                logger.error("❌ No se encontró bet_leagues.json ni bet_legues.json")
+                logger.error("❌ No se encontró bet_leagues.json en ninguna ubicación")
                 self._data = {"tournaments": {}}
                 return
         
