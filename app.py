@@ -1,4 +1,4 @@
-# app.py - VERSIÓN CORREGIDA
+# app.py 
 from flask import Flask, render_template, request, jsonify
 from flask_caching import Cache
 import sys
@@ -7,7 +7,6 @@ import re
 from pathlib import Path
 from datetime import datetime
 
-# Añadir el directorio actual al path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from utils.data_loader import data_loader
@@ -16,9 +15,8 @@ from utils.filters import filter_instance
 app = Flask(__name__)
 app.secret_key = 'tu-clave-secreta-aqui-cambiala-en-produccion'
 
-# ===== IMPORTANTE: CAMBIADO DE 'simple' A 'filesystem' =====
 cache = Cache(app, config={
-    'CACHE_TYPE': 'filesystem',  # <--- ESTO ES LO QUE CAMBIA
+    'CACHE_TYPE': 'filesystem',  
     'CACHE_DIR': 'cache',
     'CACHE_DEFAULT_TIMEOUT': 300
 })
@@ -28,25 +26,18 @@ def extract_teams(url):
     if not url:
         return "N/A"
     try:
-        # Buscar el patrón /football/nombre1-ID1/nombre2-ID2/
         pattern = r'/football/([^/]+)/([^/]+)'
         match = re.search(pattern, url)
         if match:
-            team1_raw = match.group(1)  # 'aldosivi-Eu4qrEcB'
-            team2_raw = match.group(2)  # 'union-de-santa-fe-lr2YMkTK'
+            team1_raw = match.group(1) 
+            team2_raw = match.group(2)  
             
-            # Función para limpiar: eliminar el ID al final (después del último guion)
             def clean_team(name):
-                # Si no tiene guion, devolver tal cual
                 if '-' not in name:
                     return name
-                # Separar por guion y eliminar el último segmento (el ID)
                 parts = name.split('-')
-                # El ID es el último segmento, los anteriores son el nombre
                 if len(parts) > 1:
-                    # Unir los segmentos del nombre (puede tener guiones)
                     team_name = '-'.join(parts[:-1])
-                    # Reemplazar guiones por espacios para legibilidad
                     return team_name.replace('-', ' ')
                 return name
             
@@ -78,10 +69,8 @@ def index():
     
     all_events = data_loader.get_all_events()
     
-    # Obtener fecha y hora actual
     now = datetime.now()
     
-    # Filtrar eventos pendientes (sin 'winned') y que sean futuros
     future_events = [
         e for e in all_events 
         if e.get('winned') is None 
@@ -89,11 +78,9 @@ def index():
         and e['datetime_obj'] > now
     ]
     
-    # Ordenar alfabéticamente por país (ignore case)
     future_events = sorted(future_events, key=lambda x: x.get('country', '').lower())
 
-    
-    # Agregar campo 'teams' para mostrar en la tabla
+
     for event in future_events:
         event['teams'] = extract_teams(event.get('URL_m', ''))
     
@@ -185,45 +172,73 @@ def stats():
     total_decided = total_winned + total_lost
     win_rate = total_winned / total_decided if total_decided > 0 else 0
 
+    edges = [float(e.get('selected_edge', 0)) for e in all_events if e.get('selected_edge') is not None]
+    avg_edge = sum(edges) / len(edges) if edges else 0
+
+    total_profit = 0.0
+    decided_events = [e for e in all_events if e.get('winned') in (True, False)]
+    for e in decided_events:
+        odds = float(e.get('selected_odds') or e.get('odds') or 1.0)
+        total_profit += (odds - 1.0) if e.get('winned') is True else -1.0
+        
+    roi = (total_profit / total_decided * 100) if total_decided > 0 else 0.0
+
     bet_stats = {}
     for event in all_events:
-        bet = event.get('selected_bet', 'unknown')
+        bet = event.get('selected_bet') or event.get('bet_type') or 'Desconocido'
         if bet not in bet_stats:
-            bet_stats[bet] = {'total': 0, 'winned': 0, 'lost': 0}
+            bet_stats[bet] = {'total': 0, 'winned': 0, 'lost': 0, 'profit': 0.0}
+        
         bet_stats[bet]['total'] += 1
         if event.get('winned') is True:
             bet_stats[bet]['winned'] += 1
+            odds = float(event.get('selected_odds') or event.get('odds') or 1.0)
+            bet_stats[bet]['profit'] += (odds - 1.0)
         elif event.get('winned') is False:
             bet_stats[bet]['lost'] += 1
+            bet_stats[bet]['profit'] -= 1.0
 
-    for bet, stats in bet_stats.items():
-        decided = stats['winned'] + stats['lost']
-        stats['win_rate'] = stats['winned'] / decided if decided > 0 else 0
-        
-        edges = [e.get('selected_edge', 0) for e in all_events if e.get('selected_edge') is not None]
-        avg_edge = sum(edges) / len(edges) if edges else 0
-        
-        daily_stats = {}
+    for bet, s in bet_stats.items():
+        decided = s['winned'] + s['lost']
+        s['win_rate'] = s['winned'] / decided if decided > 0 else 0.0
+        s['roi'] = (s['profit'] / decided * 100) if decided > 0 else 0.0
 
-    for event in all_events:
+    daily_stats = {}
+    cumulative_profit = 0.0
+    sorted_decided = sorted(decided_events, key=lambda x: x.get('date_str', '0000-00-00'))
+
+    for event in sorted_decided:
         date_str = event.get('date_str', '')
         if date_str:
             if date_str not in daily_stats:
-                daily_stats[date_str] = {'total': 0, 'winned': 0}
+                daily_stats[date_str] = {'total': 0, 'winned': 0, 'lost': 0, 'profit': 0.0, 'cumulative': 0.0}
+            
             daily_stats[date_str]['total'] += 1
-            if event.get('winned'):
+            odds = float(event.get('selected_odds') or event.get('odds') or 1.0)
+            is_win = event.get('winned') is True
+            p = (odds - 1.0) if is_win else -1.0
+            
+            if is_win:
                 daily_stats[date_str]['winned'] += 1
-    
+            else:
+                daily_stats[date_str]['lost'] += 1
+                
+            daily_stats[date_str]['profit'] += p
+            cumulative_profit += p
+            daily_stats[date_str]['cumulative'] = round(cumulative_profit, 2)
+
     return render_template('stats.html',
-                         total_events=total_events,
-                         total_winned=total_winned,
-                         total_lost=total_lost,
-                         total_pending=total_pending,
-                         win_rate=win_rate,
-                         avg_edge=avg_edge,
-                         bet_stats=bet_stats,
-                         daily_stats=daily_stats,
-                         tournament_stats=stats_data)
+                           total_events=total_events,
+                           total_winned=total_winned,
+                           total_lost=total_lost,
+                           total_pending=total_pending,
+                           win_rate=win_rate,
+                           avg_edge=avg_edge,
+                           total_profit=round(total_profit, 2),
+                           roi=round(roi, 2),
+                           bet_stats=bet_stats,
+                           daily_stats=daily_stats,
+                           tournament_stats=stats_data)
 
 @app.route('/model-runs')
 def model_runs():
@@ -292,10 +307,6 @@ def api_events():
         bet_type=bet_type
     )
     
-    # Build plain-serializable copies instead of mutating the shared cached
-    # event objects in place (mutating them here previously deleted
-    # 'datetime_obj' from the shared data, permanently breaking the
-    # start_date/end_date range filter for the rest of the app's lifetime).
     serializable_events = []
     for event in events:
         event_copy = {k: v for k, v in event.items() if k != 'datetime_obj'}
@@ -329,7 +340,6 @@ if __name__ == '__main__':
     print("=" * 60)
     print(f"📁 Directorio actual: {os.getcwd()}")
     
-    # Crear carpeta cache
     if not os.path.exists('cache'):
         os.makedirs('cache')
         print("📁 Carpeta cache creada")
